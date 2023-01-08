@@ -2,10 +2,49 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 3001;
 
+const client = require('prom-client');
+const collectDefaultMetrics = client.collectDefaultMetrics;
+const Registry = client.Registry;
+const register = new Registry();
+collectDefaultMetrics({ register });
+
+// https://juniortour.grafana.net/a/grafana-easystart-app/nodejs
+app.get('/metrics', async (_req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
+
+// https://www.npmjs.com/package/prom-client#:~:text=()%3B-,Custom%20Metrics,-All%20metric%20types
+const counter = new client.Counter({
+  name: 'prom_counter',
+  help: 'metric_help',
+});
+app.get("/grafana-prom-counter", (req, res) => {
+  counter.inc(1)
+  res.type('text').send(`counter.inc(1)`)
+});
+
+const gauge = new client.Gauge({
+  name: 'prom_gauge',
+  help: 'gauge_metric_help'
+});
+app.get("/grafana-prom-gauge", (req, res) => {
+  const random = Math.random()
+  if (random <= 0.5) {
+    gauge.inc(random*10)
+  } else {
+    gauge.dec(random*10)
+  }
+  res.type('text').send(`counter.inc(1)`)
+});
+
+
 app.get("/", (req, res) => res.type('html').send(html));
-
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
-
 
 const html = `
 <!DOCTYPE html>
